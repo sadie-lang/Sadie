@@ -1,6 +1,5 @@
 # Sadie
-Sadie is a fast, concise, statically typed, general purpose programming language that allows high level software integration.
-
+Sadie is a fast, concise, statically typed, general purpose programming language that aims to allow high level software integration.
 
 ## Developers
 [@munific](https://github.com/munific)
