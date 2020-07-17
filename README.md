@@ -1,3 +1,5 @@
+![Discord](https://img.shields.io/discord/731577337686130858?label=Join%20The%20DIscord%21&logo=Sadie%20Lang&style=for-the-badge)
+
 # Sadie
 Sadie is a fast, concise, statically typed, general purpose programming language that aims to allow high level software integration.
 
