@@ -1,5 +1,7 @@
 BUILD_DIR := build
 
+default: sadie
+
 clean:
 	@ rm -rf $(BUILD_DIR)
 
