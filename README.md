@@ -1,5 +1,14 @@
-<p href="https://discord.gg/HEKQ9yN">
-  <img alt="Discord" src="https://img.shields.io/discord/731577337686130858?label=Join%20The%20DIscord%21&logo=Sadie%20Lang&style=for-the-badge">
+<p align="center">
+    <br/>
+    A fast, concise, statically typed, general purpose programming language that aims to allow high level software integration.
+    <br/>
+    <br/>
+    <a href="https://discord.gg/HEKQ9yN">
+        <img src="https://img.shields.io/discord/718079849226567761?logo=discord">
+    </a>
+    <a href="https://github.com/sadie-lang/Sadie/actions">
+        <img src="https://github.com/sadie-lang/Sadie/workflows/CI/badge.svg?branch=master&event=push">
+    </a>
 </p>
 
 # Sadie
