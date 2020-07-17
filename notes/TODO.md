@@ -1,3 +1,3 @@
 # TODO:
-- make a macro for defining keywords
-- link keywords to their tokens
+- Support unicode
+- start writing parser and AST
