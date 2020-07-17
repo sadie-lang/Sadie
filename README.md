@@ -4,7 +4,7 @@
     <br/>
     <br/>
     <a href="https://discord.gg/HEKQ9yN">
-        <img src="https://img.shields.io/discord/718079849226567761?logo=discord">
+        <img src="https://img.shields.io/discord/731824253455826976?logo=discord">
     </a>
     <a href="https://github.com/sadie-lang/Sadie/actions">
         <img src="https://github.com/sadie-lang/Sadie/workflows/CI/badge.svg?branch=master&event=push">
