@@ -1,6 +1,6 @@
 <p align="center">
     <br/>
-    A new programming language built upon the [crafting interpreters](https://craftinginterpreters.com/) tutorial
+    A new programming language built upon the <a href="https://craftinginterpreters.com">crafting interpreters tutorial</a>
     <br/>
     <br/>
     <a href="https://discord.gg/pXfSvKXMzN">
