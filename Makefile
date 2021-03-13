@@ -1,11 +1,16 @@
 BUILD_DIR := build
 
-default: sadie
+default: clox
 
 clean:
 	@ rm -rf $(BUILD_DIR)
+	@ rm -rf gen
+
+debug:
+	@ $(MAKE) -f util/c.make NAME=sadie_debug MODE=debug SOURCE_DIR=c
 
 sadie:
-	@ cc src/*.c src/includes/*.h src/includes/gb/gb.h src/parser/*.c -o sadie -pthread -ldl
+	@ $(MAKE) -f util/c.make NAME=sadiec MODE=release SOURCE_DIR=c
+	@ cp build/sadiec sadiec
 
-.PHONY: sadie clean
+.PHONY: clean sadie debug
