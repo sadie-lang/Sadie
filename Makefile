@@ -1,6 +1,6 @@
 BUILD_DIR := build
 
-default: clox
+default: sadie
 
 clean:
 	@ rm -rf $(BUILD_DIR)
