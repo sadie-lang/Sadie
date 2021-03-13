@@ -1,0 +1,10 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# CodeStream ignored files
+/../../sadie\.idea/codestream.xml
+# Datasource local storage ignored files
+/../../../../../../:\Users\Rivka\IdeaProjects\sadie\.idea/dataSources/
+/dataSources.local.xml
+# Editor-based HTTP Client requests
+/httpRequests/
