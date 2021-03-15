@@ -667,11 +667,36 @@ static void this_(bool canAssign) {
   }
 
   variable(false);
-} 
+}
 
 
+static void list(bool canAssign) {
+  emitByte(OP_NEW_LIST);
+
+  do {
+    if (check(TOKEN_RIGHT_BRACKET)) {
+      break;
+    }
+
+    expression();
+    emitByte(OP_ADD_LIST);
+  } while (match(TOKEN_COMMA));
+
+  consume(TOKEN_RIGHT_BRACKET, "Expected closing ']'");
+}
 
 
+static void subscript(bool canAssign) {
+  expression();
+  consume(TOKEN_RIGHT_BRACKET, "Expected closing ']'");
+
+  if (match(TOKEN_EQUAL)) {
+    expression();
+    emitByte(OP_SUBSCRIPT_ASSIGN);
+  } else {
+    emitByte(OP_SUBSCRIPT);
+  }
+}
 static void unary(bool canAssign) {
 
   TokenType operatorType = parser.previous.type;
@@ -695,47 +720,49 @@ static void unary(bool canAssign) {
 
 
 ParseRule rules[] = {
-  [TOKEN_LEFT_PAREN]    = {grouping, call,   PREC_CALL},
-  [TOKEN_RIGHT_PAREN]   = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_LEFT_BRACE]    = {NULL,     NULL,   PREC_NONE}, 
-  [TOKEN_RIGHT_BRACE]   = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_COMMA]         = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_DOT]           = {NULL,     dot,    PREC_CALL},
-  [TOKEN_MINUS]         = {unary,    binary, PREC_TERM},
-  [TOKEN_PLUS]          = {NULL,     binary, PREC_TERM},
-  [TOKEN_SEMICOLON]     = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_SLASH]         = {NULL,     binary, PREC_FACTOR},
-  [TOKEN_STAR]          = {NULL,     binary, PREC_FACTOR},
-  [TOKEN_BANG]          = {unary,    NULL,   PREC_NONE},
-  [TOKEN_BANG_EQUAL]    = {NULL,     binary, PREC_EQUALITY},
-  [TOKEN_EQUAL]         = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_EQUAL_EQUAL]   = {NULL,     binary, PREC_EQUALITY},
-  [TOKEN_GREATER]       = {NULL,     binary, PREC_COMPARISON},
-  [TOKEN_GREATER_EQUAL] = {NULL,     binary, PREC_COMPARISON},
-  [TOKEN_LESS]          = {NULL,     binary, PREC_COMPARISON},
-  [TOKEN_LESS_EQUAL]    = {NULL,     binary, PREC_COMPARISON},
-  [TOKEN_IDENTIFIER]    = {variable, NULL,   PREC_NONE},
-  [TOKEN_STRING]        = {string,   NULL,   PREC_NONE},
-  [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE},
-  [TOKEN_AND]           = {NULL,     and_,   PREC_AND},
-  [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_ENUM]          = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_ELSE]          = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_FALSE]         = {literal,  NULL,   PREC_NONE},
-  [TOKEN_FOR]           = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_FUN]           = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_IF]            = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_NIL]           = {literal,  NULL,   PREC_NONE},
-  [TOKEN_OR]            = {NULL,     or_,    PREC_OR},
-  [TOKEN_PRINT]         = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_RETURN]        = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_SUPER]         = {super_,   NULL,   PREC_NONE},
-  [TOKEN_THIS]          = {this_,    NULL,   PREC_NONE},
-  [TOKEN_TRUE]          = {literal,  NULL,   PREC_NONE},
-  [TOKEN_VAR]           = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_WHILE]         = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_ERROR]         = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_EOF]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_LEFT_PAREN]    = {grouping, call,      PREC_CALL},
+  [TOKEN_RIGHT_PAREN]   = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_LEFT_BRACE]    = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_RIGHT_BRACE]   = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_LEFT_BRACKET]  = {list,     subscript, PREC_CALL},
+  [TOKEN_RIGHT_BRACKET] = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_COMMA]         = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_DOT]           = {NULL,     dot,       PREC_CALL},
+  [TOKEN_MINUS]         = {unary,    binary,    PREC_TERM},
+  [TOKEN_PLUS]          = {NULL,     binary,    PREC_TERM},
+  [TOKEN_SEMICOLON]     = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_SLASH]         = {NULL,     binary,    PREC_FACTOR},
+  [TOKEN_STAR]          = {NULL,     binary,    PREC_FACTOR},
+  [TOKEN_BANG]          = {unary,    NULL,      PREC_NONE},
+  [TOKEN_BANG_EQUAL]    = {NULL,     binary,    PREC_EQUALITY},
+  [TOKEN_EQUAL]         = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_EQUAL_EQUAL]   = {NULL,     binary,    PREC_EQUALITY},
+  [TOKEN_GREATER]       = {NULL,     binary,    PREC_COMPARISON},
+  [TOKEN_GREATER_EQUAL] = {NULL,     binary,    PREC_COMPARISON},
+  [TOKEN_LESS]          = {NULL,     binary,    PREC_COMPARISON},
+  [TOKEN_LESS_EQUAL]    = {NULL,     binary,    PREC_COMPARISON},
+  [TOKEN_IDENTIFIER]    = {variable, NULL,      PREC_NONE},
+  [TOKEN_STRING]        = {string,   NULL,      PREC_NONE},
+  [TOKEN_NUMBER]        = {number,   NULL,      PREC_NONE},
+  [TOKEN_AND]           = {NULL,     and_,      PREC_AND},
+  [TOKEN_CLASS]         = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_ENUM]          = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_ELSE]          = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_FALSE]         = {literal,  NULL,      PREC_NONE},
+  [TOKEN_FOR]           = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_FUN]           = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_IF]            = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_NIL]           = {literal,  NULL,      PREC_NONE},
+  [TOKEN_OR]            = {NULL,     or_,       PREC_OR},
+  [TOKEN_PRINT]         = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_RETURN]        = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_SUPER]         = {super_,   NULL,      PREC_NONE},
+  [TOKEN_THIS]          = {this_,    NULL,      PREC_NONE},
+  [TOKEN_TRUE]          = {literal,  NULL,      PREC_NONE},
+  [TOKEN_VAR]           = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_WHILE]         = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_ERROR]         = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_EOF]           = {NULL,     NULL,      PREC_NONE},
 };
 
 
@@ -920,17 +947,44 @@ static void funDeclaration() {
 }
 
 static void varDeclaration() {
-  uint8_t global = parseVariable("Expect variable name.");
+  if (match(TOKEN_LEFT_BRACKET)) {
+    Token vars[225];
+    int varCount = 0;
 
-  if (match(TOKEN_EQUAL)) {
+    do {
+      consume(TOKEN_IDENTIFIER, "Expect variable name.");
+      vars[varCount] = parser.previous;
+      varCount++;
+    } while (match(TOKEN_COMMA));
+
+    consume(TOKEN_RIGHT_BRACKET, "Expect ']' after array destructure.");
+    consume(TOKEN_EQUAL, "Expect '=' after variable array destructure");
     expression();
-  } else {
-    emitByte(OP_NIL);
-  }
-  consume(TOKEN_SEMICOLON,
-          "Expect ';' after variable declaration.");
 
-  defineVariable(global);
+    emitBytes(OP_UNPACK_LIST, varCount);
+
+    if (current->scopeDepth == 0) {
+      for (int i = varCount - 1; i >= 0; --i) {
+        uint8_t ident = identifierConstant(&vars[i]);
+        defineVariable(ident);
+      }
+    } else {
+      for (int i = varCount - 1; i >= 0; --i) {
+        declareVariable();
+        defineVariable(0);
+      }
+    }
+  } else {
+    uint8_t global = parseVariable("Expect variable name.");
+
+    if (match(TOKEN_EQUAL)) {
+      expression();
+    } else {
+      emitByte(OP_NIL);
+    }
+    defineVariable(global);
+  }
+  consume(TOKEN_SEMICOLON,"Expect ';' after variable declaration.");
 }
 
 static void expressionStatement() {
@@ -1116,7 +1170,6 @@ static void declaration() {
   if (parser.panicMode) synchronize();
 
 }
-
 
 static void statement() {
   if (match(TOKEN_PRINT)) {

@@ -332,7 +332,7 @@ static void defineMethod(ObjString* name) {
 
 
 static bool isFalsey(Value value) {
-  return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
+  return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value)) == 0;
 }
 
 
@@ -361,7 +361,7 @@ static void concatenate() {
 static InterpretResult run() {
 
   CallFrame* frame = &vm.frames[vm.frameCount - 1];
-
+  register uint8_t* ip = frame->ip;
 
 #define READ_BYTE() (*frame->ip++)
 #define READ_SHORT() \
@@ -391,6 +391,24 @@ static InterpretResult run() {
 
   for (;;) {
 
+#define STORE_FRAME frame->ip = ip
+
+#define R_ERROR(...)                                              \
+        do {                                                                \
+            STORE_FRAME;                                                    \
+            runtimeError(__VA_ARGS__);                                  \
+            return INTERPRET_RUNTIME_ERROR;                                 \
+        } while (0)
+
+#define R_ERROR_T(error, distance)                                    \
+        do {                                                                       \
+            STORE_FRAME;                                                           \
+            int valLength = 0;                                                     \
+            char *val = valueTypeToString(peek(distance), &valLength);     \
+            runtimeError(error, val);                                          \
+            FREE_ARRAY(char, val, valLength + 1);                              \
+            return INTERPRET_RUNTIME_ERROR;                                        \
+        } while (0)
 #ifdef DEBUG_TRACE_EXECUTION
     #define DISPATCH()                                                                        \
             do                                                                                    \
@@ -468,7 +486,7 @@ static InterpretResult run() {
         ObjString* name = READ_STRING();
         Value value;
         if (!tableGet(&vm.globals, name, &value)) {
-          runtimeError("Undefined variable '%s'.", name->chars);
+          R_ERROR("Undefined variable '%s'.", name->chars);
           return INTERPRET_RUNTIME_ERROR;
         }
         push(value);
@@ -490,7 +508,7 @@ static InterpretResult run() {
         ObjString* name = READ_STRING();
         if (tableSet(&vm.globals, name, peek(0))) {
           tableDelete(&vm.globals, name); 
-          runtimeError("Undefined variable '%s'.", name->chars);
+          R_ERROR("Undefined variable '%s'.", name->chars);
           return INTERPRET_RUNTIME_ERROR;
         }
         DISPATCH();
@@ -518,7 +536,7 @@ static InterpretResult run() {
         Value receiver = peek(0);
 
         if (!IS_OBJ(receiver)) {
-          runtimeError("Object has no properties.");
+          R_ERROR("Object has no properties.");
         }
 
         switch (getObjType(receiver)) {
@@ -548,11 +566,11 @@ static InterpretResult run() {
               push(value);
               DISPATCH();
             }
-            runtimeError("'%s' enum has no property '%s'.", _enum->name->chars, name->chars);
+            R_ERROR("'%s' enum has no property '%s'.", _enum->name->chars, name->chars);
             DISPATCH();
           }
           default: {
-            runtimeError("Only instances have properties.");
+            R_ERROR("Only instances have properties.");
             return INTERPRET_RUNTIME_ERROR;
           }
         }
@@ -563,7 +581,7 @@ static InterpretResult run() {
       CASE_CODE(SET_PROPERTY): {
 
         if (!IS_INSTANCE(peek(1))) {
-          runtimeError("Only instances have fields.");
+          R_ERROR("Only instances have fields.");
           return INTERPRET_RUNTIME_ERROR;
         }
 
@@ -613,8 +631,27 @@ static InterpretResult run() {
           double b = AS_NUMBER(pop());
           double a = AS_NUMBER(pop());
           push(NUMBER_VAL(a + b));
+        } else if (IS_LIST(peek(0)) && IS_LIST(peek(1))) {
+          ObjList* list1 = AS_LIST(peek(1));
+          ObjList* list2 = AS_LIST(peek(0));
+
+          ObjList* listx = newList();
+          push(OBJ_VAL(listx));
+
+          for (int i = 0; i < list1->values.count; ++i) {
+            writeValueArray(&listx->values, list1->values.values[i]);
+          }
+
+          for (int i = 0; i < list2->values.count; ++i) {
+            writeValueArray(&listx->values, list2->values.values[i]);
+          }
+          pop();
+          pop();
+          pop();
+
+          push(OBJ_VAL(listx));
         } else {
-          runtimeError(
+          R_ERROR(
               "Operands must be two numbers or two strings.");
           return INTERPRET_RUNTIME_ERROR;
         }
@@ -634,7 +671,7 @@ static InterpretResult run() {
 
       CASE_CODE(NEGATE):
         if (!IS_NUMBER(peek(0))) {
-          runtimeError("Operand must be a number.");
+          R_ERROR("Operand must be a number.");
           return INTERPRET_RUNTIME_ERROR;
         }
 
@@ -791,14 +828,14 @@ static InterpretResult run() {
 
         tableSet(&_enum->variables, READ_STRING(), value);
         pop();
-        break;
+        DISPATCH();
       }
 
       CASE_CODE(INHERIT): {
         Value superclass = peek(1);
 
         if (!IS_CLASS(superclass)) {
-          runtimeError("Superclass must be a class.");
+          R_ERROR("Superclass must be a class.");
           return INTERPRET_RUNTIME_ERROR;
         }
 
@@ -815,6 +852,156 @@ static InterpretResult run() {
       CASE_CODE(METHOD):
         defineMethod(READ_STRING());
         DISPATCH();
+
+      CASE_CODE(NEW_LIST): {
+        ObjList* list = newList();
+        push(OBJ_VAL(list));
+        break;
+      }
+
+      CASE_CODE(ADD_LIST): {
+        Value addValue = pop();
+        Value listValue = pop();
+
+        ObjList* list = AS_LIST(listValue);
+        writeValueArray(&list->values, addValue);
+
+        push(OBJ_VAL(list));
+        break;
+      }
+
+      CASE_CODE(UNPACK_LIST): {
+        int varCount = READ_BYTE();
+
+        if (!IS_LIST(peek(0))) {
+          R_ERROR("Cannot unpack a value which is not of type list.");
+        }
+
+        ObjList* list = AS_LIST(pop());
+
+        if (varCount != list->values.count) {
+          if (varCount >= list->values.count) {
+            R_ERROR("Too many values to unpack.");
+          } else {
+            R_ERROR("Not enough values to unpack.");
+          }
+        }
+
+        for (int i = 0; i < list->values.count; ++i) {
+          push(list->values.values[i]);
+        }
+
+        DISPATCH();
+      }
+
+      CASE_CODE(SUBSCRIPT): {
+        Value indexValue = peek(0);
+        Value subscriptValue = peek(1);
+
+        if (!IS_OBJ(subscriptValue)) {
+          R_ERROR_T("'%s' is not subscriptable", 1);
+        }
+
+        switch (getObjType(subscriptValue)) {
+          case OBJ_LIST: {
+            if (!IS_NUMBER(indexValue)) {
+              R_ERROR("List index must be an integer value.");
+            }
+
+            ObjList* list = AS_LIST(subscriptValue);
+            int index = AS_NUMBER(indexValue);
+
+            if (index < 0) {
+              index = list->values.count + index;
+            }
+
+            if (index >= 0 && index < list->values.count) {
+              pop();
+              pop();
+              push(list->values.values[index]);
+              DISPATCH();
+            }
+
+            R_ERROR("List index out of range.");
+          }
+
+          default: R_ERROR_T("'%s' is not subscriptable", 1);
+        }
+      }
+
+      CASE_CODE(SUBSCRIPT_ASSIGN): {
+        Value assignValue = peek(0);
+        Value indexValue = peek(1);
+        Value subscriptValue = peek(2);
+
+        if (!IS_OBJ(subscriptValue)) {
+          R_ERROR_T("'%s' does not support item assignment", 2);
+        }
+
+        switch (getObjType(subscriptValue)) {
+          case OBJ_LIST: {
+            if (!IS_NUMBER(indexValue)) {
+              R_ERROR("List index must be an integer value.");
+            }
+
+            ObjList *list = AS_LIST(subscriptValue);
+            int index = AS_NUMBER(indexValue);
+
+            if (index < 0)
+              index = list->values.count + index;
+
+            if (index >= 0 && index < list->values.count) {
+              list->values.values[index] = assignValue;
+              pop();
+              pop();
+              pop();
+              push(NIL_VAL);
+              DISPATCH();
+            }
+
+            R_ERROR("List index out of bounds.");
+            return INTERPRET_RUNTIME_ERROR;
+          }
+
+          default: {
+            R_ERROR_T("'%s' does not support item assignment", 2);
+          }
+        }
+      }
+
+      CASE_CODE(SUBSCRIPT_PUSH): {
+        Value value = peek(0);
+        Value indexValue = peek(1);
+        Value subscriptValue = peek(2);
+
+        if (!IS_OBJ(subscriptValue)) {
+          R_ERROR_T("'%s' does not support item assignment.", 2);
+        }
+
+        switch (getObjType(subscriptValue)) {
+          case OBJ_LIST: {
+            if (!IS_NUMBER(indexValue)) {
+              R_ERROR("List index must be an integer value.");
+            }
+
+            ObjList* list = AS_LIST(subscriptValue);
+            int index = AS_NUMBER(indexValue);
+
+            if (index < 0) {
+              index = list->values.count + index;
+            }
+
+            if (index >= 0 && index < list->values.count) {
+              vm.stackTop[-1] = list->values.values[index];
+              push(value);
+              DISPATCH();
+            }
+            R_ERROR("List index out of range.");
+            return INTERPRET_RUNTIME_ERROR;
+          }
+          default: R_ERROR_T("'%s' does not support item assignment.", 2);
+        }
+      }
 
     }
   }

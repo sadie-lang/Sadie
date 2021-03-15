@@ -8,6 +8,8 @@
 
 #include "vm.h"
 
+#include <stdio.h>
+
 
 #ifdef DEBUG_LOG_GC
 #include <stdio.h>
@@ -164,6 +166,13 @@ static void blackenObject(Obj* object) {
       markValue(((ObjUpvalue*)object)->closed);
       break;
 
+    case OBJ_LIST: {
+      printf("OBJ_LIST memory.c");
+      ObjList *list = (ObjList *) object;
+      markArray(&list->values);
+      break;
+    }
+
 
     case OBJ_NATIVE:
     case OBJ_STRING:
@@ -250,6 +259,13 @@ static void freeObject(Obj* object) {
     case OBJ_UPVALUE:
       FREE(ObjUpvalue, object);
       break;
+
+    case OBJ_LIST: {
+      ObjList *list = (ObjList*)object;
+      freeValueArray(&list->values);
+      FREE(ObjList, list);
+      break;
+    }
 
   }
 }

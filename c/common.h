@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define UNUSED(__x__) (void) __x__
 
 
 #define NAN_BOXING

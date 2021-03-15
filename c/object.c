@@ -156,6 +156,12 @@ ObjUpvalue* newUpvalue(Value* slot) {
   return upvalue;
 }
 
+ObjList* newList() {
+  ObjList *list = ALLOCATE_OBJ(ObjList, OBJ_LIST);
+  initValueArray(&list->values);
+  return list;
+}
+
 static void printFunction(ObjFunction* function) {
   if (function->name == NULL) {
     printf("<script>");
@@ -195,5 +201,20 @@ void printObject(Value value) {
     case OBJ_UPVALUE:
       printf("upvalue");
       break;
+    case OBJ_LIST: {
+      ObjList* list = AS_LIST(value);
+      printf("[");
+
+      for (int i = 0; i < list->values.count; ++i) {
+        printValue(list->values.values[i]);
+
+        if (i != list->values.count - 1) {
+          printf(", ");
+        }
+      }
+
+      printf("]");
+      break;
+    }
   }
 }

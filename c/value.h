@@ -166,6 +166,7 @@ void initValueArray(ValueArray* array);
 void writeValueArray(ValueArray* array, Value value);
 void freeValueArray(ValueArray* array);
 
+char *valueTypeToString(Value value, int *length);
 
 void printValue(Value value);
 

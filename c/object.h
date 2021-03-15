@@ -28,6 +28,8 @@
 
 #define IS_STRING(value)       isObjType(value, OBJ_STRING)
 
+#define IS_LIST(value)         isObjType(value, OBJ_LIST)
+
 #define AS_BOUND_METHOD(value) ((ObjBoundMethod*)AS_OBJ(value))
 
 #define AS_CLASS(value)        ((ObjClass*)AS_OBJ(value))
@@ -46,6 +48,8 @@
 #define AS_STRING(value)       ((ObjString*)AS_OBJ(value))
 
 #define AS_CSTRING(value)      (((ObjString*)AS_OBJ(value))->chars)
+
+#define AS_LIST(value)         ((ObjList*)AS_OBJ(value))
 
 
 
@@ -71,7 +75,9 @@ typedef enum {
 
   OBJ_STRING,
 
-  OBJ_UPVALUE
+  OBJ_UPVALUE,
+
+  OBJ_LIST
 
 } ObjType;
 
@@ -171,6 +177,11 @@ typedef struct {
   ObjClosure* method;
 } ObjBoundMethod;
 
+typedef struct {
+    Obj obj;
+
+    ValueArray values;
+} ObjList;
 
 
 ObjBoundMethod* newBoundMethod(Value receiver,
@@ -199,6 +210,8 @@ ObjString* takeString(char* chars, int length);
 ObjString* copyString(const char* chars, int length);
 
 ObjUpvalue* newUpvalue(Value* slot);
+
+ObjList* newList();
 
 
 void printObject(Value value);
