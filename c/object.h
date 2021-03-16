@@ -30,6 +30,8 @@
 
 #define IS_LIST(value)         isObjType(value, OBJ_LIST)
 
+#define IS_DICT(value)         isObjType(value, OBJ_DICT)
+
 #define AS_BOUND_METHOD(value) ((ObjBoundMethod*)AS_OBJ(value))
 
 #define AS_CLASS(value)        ((ObjClass*)AS_OBJ(value))
@@ -50,6 +52,8 @@
 #define AS_CSTRING(value)      (((ObjString*)AS_OBJ(value))->chars)
 
 #define AS_LIST(value)         ((ObjList*)AS_OBJ(value))
+
+#define AS_DICT(value)         ((ObjDict*)AS_OBJ(value))
 
 
 
@@ -77,7 +81,9 @@ typedef enum {
 
   OBJ_UPVALUE,
 
-  OBJ_LIST
+  OBJ_LIST,
+
+  OBJ_DICT
 
 } ObjType;
 
@@ -183,6 +189,19 @@ typedef struct {
     ValueArray values;
 } ObjList;
 
+typedef struct {
+    Value key;
+    Value value;
+    uint32_t psl;
+} DictItem;
+
+typedef struct {
+    Obj obj;
+    int count;
+    int capacityMask;
+    DictItem *entries;
+} ObjDict;
+
 
 ObjBoundMethod* newBoundMethod(Value receiver,
                                ObjClosure* method);
@@ -213,10 +232,16 @@ ObjUpvalue* newUpvalue(Value* slot);
 
 ObjList* newList();
 
+ObjDict* newDict();
+
 
 void printObject(Value value);
 
-
+char *objectToString(Value value);
+char *classToString(Value value);
+char *instanceToString(Value value);
+char *listToString(Value value);
+char *dictToString(Value value);
 
 
 static inline bool isObjType(Value value, ObjType type) {

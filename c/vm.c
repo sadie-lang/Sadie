@@ -19,11 +19,20 @@
 
 #include "vm.h"
 
+#define TABLE_MAX_LOAD 0.75
+#define TABLE_MIN_LOAD 0.25
+
 VM vm; 
 
 static Value clockNative(int argCount, Value* args) {
   return NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
 }
+
+bool dictSet(ObjDict* dict, Value key, Value value);
+static void adjDictCapacity(ObjDict *dict, int capacityMask);
+static uint32_t hashObject(Obj *object);
+static inline uint32_t hashBits(uint64_t hash);
+bool dictGet(ObjDict *dict, Value key, Value *value);
 
 
 static void resetStack() {
@@ -62,12 +71,155 @@ static void runtimeError(const char* format, ...) {
   resetStack();
 }
 
-static void defineNative(const char* name, NativeFn function) {
+void defineNative(const char* name, NativeFn function) {
   push(OBJ_VAL(copyString(name, (int)strlen(name))));
   push(OBJ_VAL(newNative(function)));
   tableSet(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
   pop();
   pop();
+}
+
+static uint32_t hashValue(Value value) {
+  if (IS_OBJ(value)) {
+    return hashObject(AS_OBJ(value));
+  }
+
+  return hashBits(value);
+}
+
+static inline uint32_t hashBits(uint64_t hash) {
+  // From v8's ComputeLongHash() which in turn cites:
+  // Thomas Wang, Integer Hash Functions.
+  // http://www.concentric.net/~Ttwang/tech/inthash.htm
+  hash = ~hash + (hash << 18);  // hash = (hash << 18) - hash - 1;
+  hash = hash ^ (hash >> 31);
+  hash = hash * 21;  // hash = (hash + (hash << 2)) + (hash << 4);
+  hash = hash ^ (hash >> 11);
+  hash = hash + (hash << 6);
+  hash = hash ^ (hash >> 22);
+  return (uint32_t) (hash & 0x3fffffff);
+}
+
+static uint32_t hashObject(Obj *object) {
+  switch (object->type) {
+    case OBJ_STRING: {
+      return ((ObjString *) object)->hash;
+    }
+
+      // Should never get here
+    default: {
+#ifdef DEBUG_PRINT_CODE
+      printf("Object: ");
+            printValue(OBJ_VAL(object));
+            printf(" not hashable!\n");
+            exit(1);
+#endif
+      return -1;
+    }
+  }
+}
+
+bool dictGet(ObjDict *dict, Value key, Value *value) {
+  if (dict->count == 0) return false;
+
+  DictItem *entry;
+  uint32_t index = hashValue(key) & dict->capacityMask;
+  uint32_t psl = 0;
+
+  for (;;) {
+    entry = &dict->entries[index];
+
+    if (IS_EMPTY(entry->key) || psl > entry->psl) {
+      return false;
+    }
+
+    if (valuesEqual(key, entry->key)) {
+      break;
+    }
+
+    index = (index + 1) & dict->capacityMask;
+    psl++;
+  }
+
+  *value = entry->value;
+  return true;
+}
+
+static void adjDictCapacity(ObjDict *dict, int capacityMask) {
+  DictItem *entries = ALLOCATE(DictItem, capacityMask + 1);
+  for (int i = 0; i <= capacityMask; i++) {
+    entries[i].key = EMPTY_VAL;
+    entries[i].value = NIL_VAL;
+    entries[i].psl = 0;
+  }
+
+  DictItem *oldEntries = dict->entries;
+  int oldMask = dict->capacityMask;
+
+  dict->count = 0;
+  dict->entries = entries;
+  dict->capacityMask = capacityMask;
+
+  for (int i = 0; i <= oldMask; i++) {
+    DictItem *entry = &oldEntries[i];
+    if (IS_EMPTY(entry->key)) continue;
+
+    dictSet(dict, entry->key, entry->value);
+  }
+
+  FREE_ARRAY(DictItem, oldEntries, oldMask + 1);
+}
+
+bool dictSet(ObjDict* dict, Value key, Value value) {
+  if (dict->count + 1 > (dict->capacityMask + 1) * TABLE_MAX_LOAD) {
+    int capacityMask = GROW_CAPACITY(dict->capacityMask + 1) - 1;
+    adjDictCapacity(dict, capacityMask);
+  }
+
+  uint32_t index = hashValue(key) & dict->capacityMask;
+  DictItem *bucket;
+  bool isNewKey = false;
+
+  DictItem entry;
+  entry.key = key;
+  entry.value = value;
+  entry.psl = 0;
+
+  for (;;) {
+    bucket = &dict->entries[index];
+
+    if (IS_EMPTY(bucket->key)) {
+      isNewKey = true;
+      break;
+    } else {
+      if (valuesEqual(key, bucket->key)) {
+        break;
+      }
+
+      if (entry.psl > bucket->psl) {
+        isNewKey = true;
+        DictItem tmp = entry;
+        entry = *bucket;
+        *bucket = tmp;
+      }
+    }
+
+    index = (index + 1) & dict->capacityMask;
+    entry.psl++;
+  }
+
+  *bucket = entry;
+  if (isNewKey) dict->count++;
+  return isNewKey;
+}
+
+bool isValidKey(Value value) {
+  if (IS_NIL(value) || IS_BOOL(value) || IS_NUMBER(value) ||
+      IS_STRING(value)) {
+    return true;
+  }
+
+  return false;
 }
 
 void initVM() {
@@ -925,6 +1077,23 @@ static InterpretResult run() {
             R_ERROR("List index out of range.");
           }
 
+          case OBJ_DICT: {
+            ObjDict* dict = AS_DICT(subscriptValue);
+            if (!isValidKey(indexValue)) {
+              R_ERROR("Type of Dictionary key must be immutable");
+            }
+
+            Value value;
+            pop();
+            pop();
+            if (dictGet(dict, indexValue, &value)) {
+              push(value);
+              DISPATCH();
+            }
+
+            R_ERROR("Key '%s' does not exist inside dictionary.", valueToString(indexValue));
+          }
+
           default: R_ERROR_T("'%s' is not subscriptable", 1);
         }
       }
@@ -963,6 +1132,20 @@ static InterpretResult run() {
             return INTERPRET_RUNTIME_ERROR;
           }
 
+          case OBJ_DICT: {
+            ObjDict* dict = AS_DICT(subscriptValue);
+            if (!isValidKey(indexValue)) {
+              R_ERROR("Type of Dictionary key must be immutable");
+            }
+
+            dictSet(dict, indexValue, assignValue);
+            pop();
+            pop();
+            pop();
+            push(NIL_VAL);
+            DISPATCH();
+          }
+
           default: {
             R_ERROR_T("'%s' does not support item assignment", 2);
           }
@@ -999,8 +1182,46 @@ static InterpretResult run() {
             R_ERROR("List index out of range.");
             return INTERPRET_RUNTIME_ERROR;
           }
+
+          case OBJ_DICT: {
+            ObjDict *dict = AS_DICT(subscriptValue);
+            if (!isValidKey(indexValue)) {
+              R_ERROR("Type of Dictionary key must be immutable");
+            }
+
+            Value dictValue;
+            if (!dictGet(dict, indexValue, &dictValue)) {
+              R_ERROR("Key '%s' does not exist inside dictionary.", valueToString(indexValue));
+            }
+
+            vm.stackTop[-1] = dictValue;
+            push(value);
+
+            DISPATCH();
+          }
+
           default: R_ERROR_T("'%s' does not support item assignment.", 2);
         }
+
+        }
+
+      CASE_CODE(NEW_DICT): {
+        int count = READ_BYTE();
+        ObjDict *dict = newDict();
+        push(OBJ_VAL(dict));
+
+        for (int i = count * 2; i > 0; i -= 2) {
+          if (!isValidKey(peek(i))) {
+            R_ERROR("Type of Dictionary key must be immutable.");
+          }
+
+          dictSet(dict, peek(i), peek(i - 1));
+        }
+
+        vm.stackTop -= count * 2 + 1;
+        push(OBJ_VAL(dict));
+
+        DISPATCH();
       }
 
     }

@@ -9,6 +9,7 @@
 
 #include "memory.h"
 #include "value.h"
+#include <stdlib.h>
 
 void initValueArray(ValueArray* array) {
   array->values = NULL;
@@ -32,6 +33,31 @@ void writeValueArray(ValueArray* array, Value value) {
 void freeValueArray(ValueArray* array) {
   FREE_ARRAY(Value, array->values, array->capacity);
   initValueArray(array);
+}
+
+char *valueToString(Value value) {
+  if (IS_BOOL(value)) {
+    char *str = AS_BOOL(value) ? "true" : "false";
+    char *boolString = malloc(sizeof(char) * (strlen(str) + 1));
+    snprintf(boolString, strlen(str) + 1, "%s", str);
+    return boolString;
+  } else if (IS_NIL(value)) {
+    char *nilString = malloc(sizeof(char) * 4);
+    snprintf(nilString, 4, "%s", "nil");
+    return nilString;
+  } else if (IS_NUMBER(value)) {
+    double number = AS_NUMBER(value);
+    int numberStringLength = snprintf(NULL, 0, "%.15g", number) + 1;
+    char *numberString = malloc(sizeof(char) * numberStringLength);
+    snprintf(numberString, numberStringLength, "%.15g", number);
+    return numberString;
+  } else if (IS_OBJ(value)) {
+    return objectToString(value);
+  }
+
+  char *unknown = malloc(sizeof(char) * 8);
+  snprintf(unknown, 8, "%s", "unknown");
+  return unknown;
 }
 
 char *valueTypeToString(Value value, int *length) {
@@ -88,6 +114,9 @@ char *valueTypeToString(Value value, int *length) {
       }
       case OBJ_LIST: {
         CONVERT(list, 4);
+      }
+      case OBJ_DICT: {
+        CONVERT(dict, 4);
       }
       case OBJ_NATIVE: {
         CONVERT(native, 6);

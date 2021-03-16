@@ -8,7 +8,6 @@
 
 #include "common.h"
 
-
 typedef struct Obj Obj;
 
 typedef struct ObjString ObjString;
@@ -29,7 +28,7 @@ typedef struct ObjString ObjString;
 #define TAG_NIL   1 
 #define TAG_FALSE 2 
 #define TAG_TRUE  3 
-
+#define TAG_EMPTY 4
 
 typedef uint64_t Value;
 
@@ -41,6 +40,10 @@ typedef uint64_t Value;
 #define IS_NIL(value)       ((value) == NIL_VAL)
 
 #define IS_NUMBER(value)    (((value) & QNAN) != QNAN)
+
+#define IS_EMPTY(v)   ((v) == EMPTY_VAL)
+
+#define EMPTY_VAL           ((Value)(uint64_t)(QNAN | TAG_EMPTY))
 
 
 #define IS_OBJ(value) \
@@ -169,6 +172,9 @@ void freeValueArray(ValueArray* array);
 char *valueTypeToString(Value value, int *length);
 
 void printValue(Value value);
+
+char *valueToString(Value value);
+
 
 
 #endif

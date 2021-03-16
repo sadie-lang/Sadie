@@ -718,11 +718,29 @@ static void unary(bool canAssign) {
   }
 }
 
+static void dict(bool canAssign) {
+  int count = 0;
+
+  do {
+    if (check(TOKEN_RIGHT_BRACE)) {
+      break;
+    }
+
+    expression();
+    consume(TOKEN_COLON, "Expect ':'");
+    expression();
+    count++;
+  } while (match(TOKEN_COMMA));
+
+  emitBytes(OP_NEW_DICT, count);
+
+  consume(TOKEN_RIGHT_BRACE, "Expected closing '}'");
+}
 
 ParseRule rules[] = {
   [TOKEN_LEFT_PAREN]    = {grouping, call,      PREC_CALL},
   [TOKEN_RIGHT_PAREN]   = {NULL,     NULL,      PREC_NONE},
-  [TOKEN_LEFT_BRACE]    = {NULL,     NULL,      PREC_NONE},
+  [TOKEN_LEFT_BRACE]    = {dict,     NULL,      PREC_NONE},
   [TOKEN_RIGHT_BRACE]   = {NULL,     NULL,      PREC_NONE},
   [TOKEN_LEFT_BRACKET]  = {list,     subscript, PREC_CALL},
   [TOKEN_RIGHT_BRACKET] = {NULL,     NULL,      PREC_NONE},

@@ -108,7 +108,8 @@ typedef enum {
   OP_NEW_LIST,
   OP_SUBSCRIPT_ASSIGN,
   OP_SUBSCRIPT_PUSH,
-  OP_ADD_LIST
+  OP_ADD_LIST,
+  OP_NEW_DICT
 
 } OpCode;
 

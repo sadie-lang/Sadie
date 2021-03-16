@@ -96,6 +96,14 @@ static void markArray(ValueArray* array) {
   }
 }
 
+void markDict(ObjDict *dict) {
+  for (int i = 0; i <= dict->capacityMask; i++) {
+    DictItem *entry = &dict->entries[i];
+    markValue(entry->key);
+    markValue(entry->value);
+  }
+}
+
 
 static void blackenObject(Obj* object) {
 
@@ -167,9 +175,14 @@ static void blackenObject(Obj* object) {
       break;
 
     case OBJ_LIST: {
-      printf("OBJ_LIST memory.c");
       ObjList *list = (ObjList *) object;
       markArray(&list->values);
+      break;
+    }
+
+    case OBJ_DICT: {
+      ObjDict* dict = (ObjDict*)object;
+      markDict(dict);
       break;
     }
 
@@ -195,10 +208,9 @@ static void freeObject(Obj* object) {
       break;
 
 
-
     case OBJ_CLASS: {
 
-      ObjClass* klass = (ObjClass*)object;
+      ObjClass *klass = (ObjClass *) object;
       freeTable(&klass->methods);
 
       FREE(ObjClass, object);
@@ -206,16 +218,16 @@ static void freeObject(Obj* object) {
     }
 
     case OBJ_ENUM: {
-        ObjEnum* _enum = (ObjEnum *)object;
-        freeTable(&_enum->variables);
+      ObjEnum *_enum = (ObjEnum *) object;
+      freeTable(&_enum->variables);
 
-        FREE(ObjEnum, object);
-        break;
+      FREE(ObjEnum, object);
+      break;
     }
 
     case OBJ_CLOSURE: {
 
-      ObjClosure* closure = (ObjClosure*)object;
+      ObjClosure *closure = (ObjClosure *) object;
       FREE_ARRAY(ObjUpvalue*, closure->upvalues,
                  closure->upvalueCount);
 
@@ -224,23 +236,20 @@ static void freeObject(Obj* object) {
     }
 
 
-
     case OBJ_FUNCTION: {
-      ObjFunction* function = (ObjFunction*)object;
+      ObjFunction *function = (ObjFunction *) object;
       freeChunk(&function->chunk);
       FREE(ObjFunction, object);
       break;
     }
 
 
-
     case OBJ_INSTANCE: {
-      ObjInstance* instance = (ObjInstance*)object;
+      ObjInstance *instance = (ObjInstance *) object;
       freeTable(&instance->fields);
       FREE(ObjInstance, object);
       break;
     }
-
 
 
     case OBJ_NATIVE:
@@ -249,7 +258,7 @@ static void freeObject(Obj* object) {
 
 
     case OBJ_STRING: {
-      ObjString* string = (ObjString*)object;
+      ObjString *string = (ObjString *) object;
       FREE_ARRAY(char, string->chars, string->length + 1);
       FREE(ObjString, object);
       break;
@@ -261,9 +270,16 @@ static void freeObject(Obj* object) {
       break;
 
     case OBJ_LIST: {
-      ObjList *list = (ObjList*)object;
+      ObjList *list = (ObjList *) object;
       freeValueArray(&list->values);
       FREE(ObjList, list);
+      break;
+    }
+
+    case OBJ_DICT: {
+      ObjDict *dict = (ObjDict *) object;
+      FREE_ARRAY(DictItem, dict->entries, dict->capacityMask + 1);
+      FREE(ObjDict, dict);
       break;
     }
 
