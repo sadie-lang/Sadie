@@ -214,23 +214,11 @@ void printObject(Value value) {
       printf("upvalue");
       break;
     case OBJ_LIST: {
-      ObjList* list = AS_LIST(value);
-      printf("[");
-
-      for (int i = 0; i < list->values.count; ++i) {
-        printValue(list->values.values[i]);
-
-        if (i != list->values.count - 1) {
-          printf(", ");
-        }
-      }
-
-      printf("]");
+      printf("%s", listToString(value));
       break;
     }
 
     case OBJ_DICT: {
-      //ObjDict* dict = AS_DICT(value);
       printf("%s", dictToString(value));
       break;
     }
@@ -411,7 +399,7 @@ char *dictToString(Value value) {
 char *classToString(Value value) {
   ObjClass *klass = AS_CLASS(value);
   char *classString = malloc(sizeof(char) * (klass->name->length + 7));
-  memcpy(classString, "<Cls ", 5);
+  memcpy(classString, "<Class ", 5);
   memcpy(classString + 5, klass->name->chars, klass->name->length);
   memcpy(classString + 5 + klass->name->length, ">", 1);
   classString[klass->name->length + 6] = '\0';
