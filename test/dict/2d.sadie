@@ -1,0 +1,5 @@
+var x = {"database": {"customers": ["John Smith", "Jane Doe", "Bob Thomas"]}};
+
+for (var i = 0; i < 3; i = i + 1) {
+    print(x["database"]["customers"][i]);
+}
