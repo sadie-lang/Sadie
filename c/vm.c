@@ -697,7 +697,7 @@ static InterpretResult run() {
         }
 
         switch (getObjType(receiver)) {
-          case OBJ_CLASS: {
+          case OBJ_INSTANCE: {
             ObjInstance* instance = AS_INSTANCE(peek(0));
             ObjString* name = READ_STRING();
 
@@ -713,6 +713,7 @@ static InterpretResult run() {
             }
             DISPATCH();
           }
+
           case OBJ_ENUM: {
             ObjEnum* _enum = AS_ENUM(receiver);
             ObjString* name = READ_STRING();
@@ -728,7 +729,6 @@ static InterpretResult run() {
           }
           default: {
             R_ERROR("Only instances have properties.");
-            return INTERPRET_RUNTIME_ERROR;
           }
         }
       }
